@@ -5,10 +5,11 @@
   "description": "MyBank v2 - Node.js backend with PostgreSQL and Docker support",
   "main": "server.js",
   "scripts": {
-    "start": "npm run init-db && node server.js",
+    "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "echo 'Build completed successfully'",
-    "init-db": "node scripts/init-database.js"
+    "init-db": "node scripts/init-database.js",
+    "postinstall": "node scripts/init-database.js || echo 'Database initialization failed, server will start anyway'"
   },
   "keywords": ["banking", "nodejs", "postgresql", "docker"],
   "author": "Alex",

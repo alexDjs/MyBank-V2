@@ -16,20 +16,37 @@ const PORT = process.env.PORT || 3000;
 const SECRET_KEY = process.env.SECRET_KEY || 'secret';
 
 // ===== Database Configuration =====
+let connectionString;
+if (process.env.DATABASE_URL) {
+  connectionString = process.env.DATABASE_URL;
+} else {
+  const dbUser = process.env.DB_USER || 'mybank_user';
+  const dbPassword = process.env.DB_PASSWORD || 'mybank_password';
+  const dbHost = process.env.DB_HOST || 'localhost';
+  const dbPort = process.env.DB_PORT || '5432';
+  const dbName = process.env.DB_NAME || 'mybank_db';
+  connectionString = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
+}
+
+console.log('🔗 Database connection string configured');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+  connectionString,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// ===== Database Connection Test =====
-pool.connect()
-  .then(client => {
+// ===== Database Connection Test (Non-blocking) =====
+async function testDatabaseConnection() {
+  try {
+    const client = await pool.connect();
     console.log('✅ Connected to PostgreSQL database');
     client.release();
-  })
-  .catch(err => {
-    console.error('❌ Database connection error:', err);
-  });
+    return true;
+  } catch (err) {
+    console.error('❌ Database connection error:', err.message);
+    return false;
+  }
+}
 
 // ===== Middleware =====
 app.use(cors());
@@ -406,10 +423,13 @@ app.use((err, req, res, next) => {
 });
 
 // ===== Start Server =====
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 MyBank V2 Server running on port ${PORT}`);
   console.log(`📅 Started at: ${new Date().toISOString()}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Test database connection after server starts
+  await testDatabaseConnection();
 });
 
 // ===== Graceful Shutdown =====

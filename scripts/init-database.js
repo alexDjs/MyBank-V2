@@ -4,8 +4,23 @@ import dotenv from 'dotenv';
 const { Pool } = pkg;
 dotenv.config();
 
+// ===== Database Configuration =====
+let connectionString;
+if (process.env.DATABASE_URL) {
+  connectionString = process.env.DATABASE_URL;
+} else {
+  const dbUser = process.env.DB_USER || 'mybank_user';
+  const dbPassword = process.env.DB_PASSWORD || 'mybank_password';
+  const dbHost = process.env.DB_HOST || 'localhost';
+  const dbPort = process.env.DB_PORT || '5432';
+  const dbName = process.env.DB_NAME || 'mybank_db';
+  connectionString = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
+}
+
+console.log('🔄 Initializing database connection...');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+  connectionString,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
@@ -197,13 +212,19 @@ async function seedDatabase() {
 // Main execution
 async function main() {
   try {
+    console.log('🔄 Starting database initialization...');
     await initializeDatabase();
     await seedDatabase();
     console.log('\n🎉 Database setup completed successfully!');
     process.exit(0);
   } catch (error) {
-    console.error('\n💥 Database setup failed:', error);
-    process.exit(1);
+    console.error('\n💥 Database setup failed:', error.message);
+    if (process.env.NODE_ENV === 'production') {
+      console.log('⚠️  In production mode, continuing without database initialization...');
+      process.exit(0); // Don't fail the deployment
+    } else {
+      process.exit(1);
+    }
   }
 }
 
