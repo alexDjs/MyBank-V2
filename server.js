@@ -37,13 +37,17 @@ const pool = new Pool({
 
 // ===== Database Initialization =====
 async function initializeDatabase() {
-  const client = await pool.connect();
-
+  let client;
   try {
     console.log('🔄 Initializing database...');
+    client = await pool.connect();
 
     // Create extensions if needed
-    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    try {
+      await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    } catch (extError) {
+      console.log('ℹ️  UUID extension already exists or not needed');
+    }
 
     // Create users table
     await client.query(`
@@ -64,12 +68,13 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS accounts (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL,
         account_number VARCHAR(50) UNIQUE NOT NULL,
         balance DECIMAL(15,2) DEFAULT 0.00,
         currency VARCHAR(3) DEFAULT 'USD',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 
@@ -77,13 +82,14 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS transactions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        account_id UUID NOT NULL,
         type VARCHAR(50) NOT NULL,
         amount DECIMAL(15,2) NOT NULL CHECK (amount > 0),
         direction VARCHAR(3) NOT NULL CHECK (direction IN ('in', 'out')),
         location VARCHAR(255) DEFAULT '',
         description TEXT DEFAULT '',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
       )
     `);
 
@@ -100,14 +106,14 @@ async function initializeDatabase() {
     
     return true;
   } catch (error) {
-    console.error('❌ Database initialization error:', error.message);
+    console.error('❌ Database initialization error:', error);
     if (process.env.NODE_ENV === 'production') {
-      console.log('⚠️  Continuing in production mode despite DB init error...');
+      console.log('⚠️  Production mode: continuing despite DB init error...');
       return false;
     }
     throw error;
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
@@ -131,6 +137,7 @@ async function seedDemoData(client) {
       `, ['demo@mybank.com', hashedPassword, 'Demo', 'User', 'Poland']);
 
       const userId = userResult.rows[0].id;
+      console.log('✅ Demo user created with ID:', userId);
 
       // Create demo account
       const accountResult = await client.query(`
@@ -140,6 +147,7 @@ async function seedDemoData(client) {
       `, [userId, `ACC-DEMO-${Date.now()}`, 2649.95]);
 
       const accountId = accountResult.rows[0].id;
+      console.log('✅ Demo account created with ID:', accountId);
 
       // Create sample transactions
       const transactions = [
@@ -157,11 +165,14 @@ async function seedDemoData(client) {
         `, [accountId, transaction.type, transaction.amount, transaction.direction, transaction.location, transaction.description]);
       }
 
-      console.log('✅ Demo data created: demo@mybank.com / demo123');
+      console.log(`✅ ${transactions.length} demo transactions created`);
+      console.log('👤 Demo credentials: demo@mybank.com / demo123');
+    } else {
+      console.log('ℹ️  Demo user already exists, skipping seeding');
     }
   } catch (error) {
-    console.error('⚠️  Demo data seeding failed:', error.message);
-    // Don't fail the startup if demo data fails
+    console.error('⚠️  Demo data seeding failed:', error);
+    console.log('ℹ️  Application will continue without demo data');
   }
 }
 
