@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: mybank-v2-app
+    env: node
+    plan: starter
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mybank-v2-postgres
+          property: connectionString
+    autoDeploy: true
+
+databases:
+  - name: mybank-v2-postgres
+    databaseName: mybank_db
+    user: mybank_user
+    plan: starter

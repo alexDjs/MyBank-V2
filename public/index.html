@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>MyBank V2</title>
+  <link rel="icon" href="favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Authentication Overlay -->
+<div class="blur-overlay" id="auth-overlay">
+  <!-- Login Form -->
+  <div class="auth-box" id="login-box">
+    <div class="auth-header">
+      <div class="logo">
+        🏦 <h2>Welcome to MyBank V2</h2>
+      </div>
+      <p>Sign in to your account</p>
+    </div>
+    
+    <form id="login-form">
+      <div class="input-group">
+        <label for="login-email">Email Address</label>
+        <input type="email" id="login-email" placeholder="your.email@example.com" required />
+      </div>
+      
+      <div class="input-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" placeholder="Enter your password" required />
+      </div>
+      
+      <button type="submit" class="auth-btn primary">Sign In</button>
+      
+      <div class="auth-error" id="login-error"></div>
+      
+      <div class="auth-switch">
+        <p>Don't have an account? <a href="#" id="show-register">Sign up here</a></p>
+      </div>
+    </form>
+  </div>
+
+  <!-- Registration Form -->
+  <div class="auth-box" id="register-box" style="display: none;">
+    <div class="auth-header">
+      <div class="logo">
+        🏦 <h2>Create Account</h2>
+      </div>
+      <p>Join MyBank V2 today</p>
+    </div>
+    
+    <form id="register-form">
+      <div class="input-row">
+        <div class="input-group">
+          <label for="register-firstName">First Name</label>
+          <input type="text" id="register-firstName" placeholder="John" required />
+        </div>
+        
+        <div class="input-group">
+          <label for="register-lastName">Last Name</label>
+          <input type="text" id="register-lastName" placeholder="Doe" required />
+        </div>
+      </div>
+      
+      <div class="input-group">
+        <label for="register-email">Email Address</label>
+        <input type="email" id="register-email" placeholder="john.doe@example.com" required />
+      </div>
+      
+      <div class="input-group">
+        <label for="register-country">Country</label>
+        <select id="register-country">
+          <option value="Poland">Poland</option>
+          <option value="United States">United States</option>
+          <option value="United Kingdom">United Kingdom</option>
+          <option value="Germany">Germany</option>
+          <option value="France">France</option>
+          <option value="Ukraine">Ukraine</option>
+          <option value="Canada">Canada</option>
+          <option value="Australia">Australia</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      
+      <div class="input-group">
+        <label for="register-password">Password</label>
+        <input type="password" id="register-password" placeholder="At least 6 characters with letters and numbers" required />
+        <div class="password-strength" id="password-strength"></div>
+      </div>
+      
+      <div class="input-group">
+        <label for="register-confirmPassword">Confirm Password</label>
+        <input type="password" id="register-confirmPassword" placeholder="Re-enter your password" required />
+      </div>
+      
+      <button type="submit" class="auth-btn primary">Create Account</button>
+      
+      <div class="auth-error" id="register-error"></div>
+      
+      <div class="auth-switch">
+        <p>Already have an account? <a href="#" id="show-login">Sign in here</a></p>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Main Application -->
+<div class="app-container" id="app-container" style="display: none;">
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="nav-logo">
+        🏦 <h1>MyBank V2</h1>
+      </div>
+      <span class="version">v2.0</span>
+    </div>
+    
+    <div class="nav-user">
+      <span id="user-welcome">Welcome back!</span>
+      <button id="logout-btn" class="nav-btn">
+        <span>Logout</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Account Information -->
+  <section class="account-section">
+    <div class="container">
+      <div class="account-header">
+        <div class="account-info">
+          <h2 id="account-title">My Account</h2>
+          <p class="account-number" id="account-number">Account: Loading...</p>
+        </div>
+        
+        <div class="balance-display">
+          <span class="balance-label">Current Balance</span>
+          <span class="balance-amount" id="balance-amount">$0.00</span>
+        </div>
+      </div>
+      
+      <div class="account-details">
+        <div class="detail-item">
+          <span class="detail-label">Account Holder</span>
+          <span class="detail-value" id="account-holder">Loading...</span>
+        </div>
+        
+        <div class="detail-item">
+          <span class="detail-label">Country</span>
+          <span class="detail-value" id="account-country">Loading...</span>
+        </div>
+        
+        <div class="detail-item">
+          <span class="detail-label">Bank</span>
+          <span class="detail-value">MyBank V2</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Transaction Form -->
+  <section class="transaction-form-section">
+    <div class="container">
+      <div class="form-card">
+        <h3>New Transaction</h3>
+        
+        <form id="transaction-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="transaction-type">Type</label>
+              <select id="transaction-type" required>
+                <option value="">Select type</option>
+                <optgroup label="💰 Income">
+                  <option value="Salary">💰 Salary</option>
+                  <option value="Freelance">💻 Freelance</option>
+                  <option value="Bonus">🎁 Bonus</option>
+                  <option value="Transfer">💸 Transfer</option>
+                  <option value="Refund">↩️ Refund</option>
+                  <option value="Investment">📈 Investment</option>
+                </optgroup>
+                <optgroup label="🛒 Shopping & Food">
+                  <option value="Biedronka">🐞 Biedronka</option>
+                  <option value="Żabka">🐸 Żabka</option>
+                  <option value="Tesco">🛒 Tesco</option>
+                  <option value="Lidl">🛒 Lidl</option>
+                  <option value="Grocery">🛒 Grocery</option>
+                  <option value="Restaurant">🍽️ Restaurant</option>
+                  <option value="McDonald's">🍔 McDonald's</option>
+                  <option value="KFC">🍗 KFC</option>
+                  <option value="Starbucks">☕ Starbucks</option>
+                </optgroup>
+                <optgroup label="⛽ Transport & Fuel">
+                  <option value="Orlen">⛽ Orlen</option>
+                  <option value="Shell">🐚 Shell</option>
+                  <option value="MPK Wrocław">🚌 MPK Wrocław</option>
+                  <option value="Uber">🚗 Uber</option>
+                  <option value="Parking">🅿️ Parking</option>
+                </optgroup>
+                <optgroup label="🏠 Home & Utilities">
+                  <option value="Rent">🏠 Rent</option>
+                  <option value="Electricity">⚡ Electricity</option>
+                  <option value="Water">💧 Water</option>
+                  <option value="Heating">🔥 Heating</option>
+                  <option value="Internet">🌐 Internet</option>
+                </optgroup>
+                <optgroup label="📱 Telecom">
+                  <option value="Orange">📶 Orange</option>
+                  <option value="Play">📱 Play</option>
+                  <option value="T-Mobile">📞 T-Mobile</option>
+                  <option value="Plus">📡 Plus</option>
+                </optgroup>
+                <optgroup label="🏥 Health & Beauty">
+                  <option value="Apteka DOZ">💊 Apteka DOZ</option>
+                  <option value="Fryzjer">💇 Fryzjer</option>
+                  <option value="Salon Urody">💅 Salon Urody</option>
+                  <option value="Fitness">💪 Fitness</option>
+                </optgroup>
+                <optgroup label="🎬 Entertainment">
+                  <option value="Cinema">🎬 Cinema</option>
+                  <option value="Entertainment">🎮 Entertainment</option>
+                </optgroup>
+                <optgroup label="🏦 Financial">
+                  <option value="PKO BP">🏦 PKO BP</option>
+                  <option value="mBank">💳 mBank</option>
+                  <option value="ING">🏦 ING Bank</option>
+                </optgroup>
+                <optgroup label="📋 Other">
+                  <option value="Other">📋 Other</option>
+                </optgroup>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="transaction-direction">Direction</label>
+              <select id="transaction-direction" required>
+                <option value="">Select direction</option>
+                <option value="in">Income (+)</option>
+                <option value="out">Expense (-)</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="transaction-amount">Amount ($)</label>
+              <input type="number" id="transaction-amount" placeholder="0.00" step="0.01" min="0.01" required />
+            </div>
+            
+            <div class="form-group">
+              <label for="transaction-location">Location</label>
+              <input type="text" id="transaction-location" placeholder="Where did this transaction occur?" />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="transaction-description">Description</label>
+            <input type="text" id="transaction-description" list="description-options" placeholder="Choose from suggestions or type your own" maxlength="200" />
+            <datalist id="description-options">
+              <!-- Income descriptions -->
+              <option value="Monthly salary - February 2026"></option>
+              <option value="Freelance payment - Project completed"></option>
+              <option value="Bonus payment Q1 2026"></option>
+              <option value="Transfer from savings account"></option>
+              <option value="Investment dividend payout"></option>
+              <option value="Refund for cancelled order"></option>
+              
+              <!-- Shopping descriptions -->
+              <option value="Weekly groceries shopping"></option>
+              <option value="Receipt #BDK789012, Card ending 4567"></option>
+              <option value="Online order delivery"></option>
+              <option value="Clothing and accessories"></option>
+              <option value="Electronics purchase"></option>
+              <option value="Pharmacy - prescription medicines"></option>
+              
+              <!-- Fuel & Transport -->
+              <option value="Fuel 45L Pb95 - Pump #3"></option>
+              <option value="Public transport monthly pass"></option>
+              <option value="Taxi ride to airport"></option>
+              <option value="Car maintenance and repair"></option>
+              <option value="Parking fees city center"></option>
+              
+              <!-- Utilities & Bills -->
+              <option value="Electricity bill March 2026"></option>
+              <option value="Internet bill - Orange Polska"></option>
+              <option value="Mobile plan monthly payment"></option>
+              <option value="Water and sewage bill Q1 2026"></option>
+              <option value="Heating bill winter season"></option>
+              <option value="Apartment rent March 2026"></option>
+              
+              <!-- Entertainment & Lifestyle -->
+              <option value="Cinema tickets weekend"></option>
+              <option value="Restaurant dinner with family"></option>
+              <option value="Gym membership monthly fee"></option>
+              <option value="Haircut and styling"></option>
+              <option value="Coffee and snacks"></option>
+              <option value="Books and magazines"></option>
+              
+              <!-- Financial & Services -->
+              <option value="Bank transfer fee"></option>
+              <option value="ATM withdrawal abroad"></option>
+              <option value="Insurance premium payment"></option>
+              <option value="Currency exchange fee"></option>
+              <option value="Investment portfolio top-up"></option>
+              
+              <!-- Personal & Family -->
+              <option value="Birthday gift for mom"></option>
+              <option value="Medical consultation fee"></option>
+              <option value="School supplies for kids"></option>
+              <option value="Pet food and supplies"></option>
+              <option value="House cleaning service"></option>
+            </datalist>
+            <small class="input-hint">Start typing or click to see suggestions</small>
+          </div>
+          
+          <button type="submit" class="form-btn primary">Add Transaction</button>
+          
+          <div class="form-error" id="transaction-error"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Transactions History -->
+  <section class="transactions-section">
+    <div class="container">
+      <div class="section-header">
+        <h3>Transaction History</h3>
+        <div class="section-controls">
+          <button id="refresh-transactions" class="control-btn">
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="table-container">
+        <table class="transactions-table" id="transactions-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Direction</th>
+              <th>Amount</th>
+              <th>Location</th>
+              <th>Description</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="transactions-body">
+            <!-- Transactions will be populated here -->
+          </tbody>
+        </table>
+        
+        <div class="table-empty" id="transactions-empty" style="display: none;">
+          <p>No transactions found. Add your first transaction above!</p>
+        </div>
+        
+        <div class="table-loading" id="transactions-loading">
+          <p>Loading transactions...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="container">
+      <p>&copy; 2026 MyBank V2. Enhanced version with PostgreSQL and Docker support.</p>
+    </div>
+  </footer>
+</div>
+
+<!-- JavaScript -->
+<script src="app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: mybank-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mybank_db}
+      POSTGRES_USER: ${POSTGRES_USER:-mybank_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mybank_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mybank_user} -d ${POSTGRES_DB:-mybank_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MyBank Application
+  mybank-app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: mybank-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      SECRET_KEY: ${SECRET_KEY:-your_super_secret_jwt_key_change_this_in_production}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-mybank_db}
+      DB_USER: ${POSTGRES_USER:-mybank_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-mybank_password}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./public:/app/public:ro
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: mybank-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Database initialization (runs once)
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mybank-db-init
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-mybank_db}
+      DB_USER: ${POSTGRES_USER:-mybank_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-mybank_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["node", "scripts/init-database.js"]
+    restart: "no"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: mybank-network
+    driver: bridge

@@ -1,0 +1,573 @@
+{
+	"info": {
+		"_postman_id": "mybank-v2-collection",
+		"name": "MyBank V2 API Collection",
+		"description": "Complete API collection for MyBank V2 application testing with authentication workflow",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register New User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"email\": \"test@example.com\",\n  \"country\": \"Poland\",\n  \"password\": \"test123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login (Demo User)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract JWT token from response",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    const token = responseJson.token;",
+									"    ",
+									"    // Set token as environment variable",
+									"    pm.environment.set('jwt_token', token);",
+									"    ",
+									"    // Set user info",
+									"    pm.environment.set('user_email', responseJson.user.email);",
+									"    pm.environment.set('user_name', responseJson.user.firstName + ' ' + responseJson.user.lastName);",
+									"    ",
+									"    console.log('JWT Token saved:', token);",
+									"    ",
+									"    // Test response",
+									"    pm.test('Login successful', function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"        pm.expect(responseJson.message).to.equal('Login successful');",
+									"        pm.expect(responseJson.token).to.exist;",
+									"    });",
+									"} else {",
+									"    pm.test('Login failed', function () {",
+									"        pm.expect(pm.response.code).to.not.equal(200);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"demo@mybank.com\",\n  \"password\": \"demo123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login (Test User)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract JWT token from response",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    const token = responseJson.token;",
+									"    ",
+									"    // Set token as environment variable",
+									"    pm.environment.set('jwt_token', token);",
+									"    ",
+									"    console.log('JWT Token saved:', token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"test123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Account Management",
+			"item": [
+				{
+					"name": "Get Account Info",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Account info retrieved successfully', function () {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    ",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.account).to.exist;",
+									"    pm.expect(responseJson.account.accountNumber).to.exist;",
+									"    pm.expect(responseJson.account.balance).to.be.a('number');",
+									"    pm.expect(responseJson.owner).to.exist;",
+									"});",
+									"",
+									"// Save current balance for transaction tests",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    pm.environment.set('current_balance', responseJson.account.balance);",
+									"    console.log('Current balance:', responseJson.account.balance);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/account",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"account"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Transactions",
+			"item": [
+				{
+					"name": "Get All Transactions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Transactions retrieved successfully', function () {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    ",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.transactions).to.be.an('array');",
+									"    ",
+									"    if (responseJson.transactions.length > 0) {",
+									"        const firstTransaction = responseJson.transactions[0];",
+									"        pm.expect(firstTransaction.id).to.exist;",
+									"        pm.expect(firstTransaction.type).to.exist;",
+									"        pm.expect(firstTransaction.amount).to.be.a('number');",
+									"        pm.expect(firstTransaction.direction).to.be.oneOf(['in', 'out']);",
+									"    }",
+									"});",
+									"",
+									"// Count transactions",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    console.log('Total transactions:', responseJson.transactions.length);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/transactions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Income Transaction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Income transaction created successfully', function () {",
+									"    pm.expect(pm.response.code).to.equal(201);",
+									"    ",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.equal('Transaction created successfully');",
+									"    pm.expect(responseJson.transaction).to.exist;",
+									"    pm.expect(responseJson.transaction.direction).to.equal('in');",
+									"    pm.expect(responseJson.newBalance).to.be.a('number');",
+									"});",
+									"",
+									"// Verify balance increased",
+									"if (pm.response.code === 201) {",
+									"    const responseJson = pm.response.json();",
+									"    const currentBalance = pm.environment.get('current_balance');",
+									"    const expectedBalance = parseFloat(currentBalance) + responseJson.transaction.amount;",
+									"    ",
+									"    pm.test('Balance increased correctly', function () {",
+									"        pm.expect(responseJson.newBalance).to.be.closeTo(expectedBalance, 0.01);",
+									"    });",
+									"    ",
+									"    // Update balance for next tests",
+									"    pm.environment.set('current_balance', responseJson.newBalance);",
+									"    console.log('New balance after income:', responseJson.newBalance);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization", 
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"Bonus\",\n  \"amount\": 500.00,\n  \"direction\": \"in\",\n  \"location\": \"Company Bonus Program\",\n  \"description\": \"Quarterly performance bonus\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/transactions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Shopping Transaction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Shopping transaction created successfully', function () {",
+									"    pm.expect(pm.response.code).to.equal(201);",
+									"    ",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.equal('Transaction created successfully');",
+									"    pm.expect(responseJson.transaction.direction).to.equal('out');",
+									"    pm.expect(responseJson.newBalance).to.be.a('number');",
+									"});",
+									"",
+									"// Verify balance decreased",
+									"if (pm.response.code === 201) {",
+									"    const responseJson = pm.response.json();",
+									"    const currentBalance = pm.environment.get('current_balance');",
+									"    const expectedBalance = parseFloat(currentBalance) - responseJson.transaction.amount;",
+									"    ",
+									"    pm.test('Balance decreased correctly', function () {",
+									"        pm.expect(responseJson.newBalance).to.be.closeTo(expectedBalance, 0.01);",
+									"    });",
+									"    ",
+									"    // Update balance for next tests",
+									"    pm.environment.set('current_balance', responseJson.newBalance);",
+									"    console.log('New balance after shopping:', responseJson.newBalance);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"Biedronka\",\n  \"amount\": 89.50,\n  \"direction\": \"out\",\n  \"location\": \"Biedronka Market Plaza, Wrocław\",\n  \"description\": \"Weekly grocery shopping\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/transactions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Gas Station Transaction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"Orlen\",\n  \"amount\": 250.00,\n  \"direction\": \"out\",\n  \"location\": \"Orlen Station, ul. Krakowska, Wrocław\",\n  \"description\": \"Full tank gasoline\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/transactions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Error Testing",
+			"item": [
+				{
+					"name": "Unauthorized Access",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Unauthorized access blocked', function () {",
+									"    pm.expect(pm.response.code).to.equal(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/account",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"account"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Invalid login rejected', function () {",
+									"    pm.expect(pm.response.code).to.equal(401);",
+									"    ",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.equal('Invalid credentials');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"wrong@email.com\",\n  \"password\": \"wrongpassword\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid Transaction Data",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Invalid transaction rejected', function () {",
+									"    pm.expect(pm.response.code).to.equal(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"Invalid\",\n  \"amount\": -100,\n  \"direction\": \"invalid\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/transactions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Set base URL if not exist",
+					"if (!pm.environment.get('base_url')) {",
+					"    pm.environment.set('base_url', 'http://localhost:3000');",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test for response time",
+					"pm.test('Response time is less than 2000ms', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+					"});",
+					"",
+					"// Global test for response format",
+					"pm.test('Response has valid JSON format', function () {",
+					"    pm.response.to.have.jsonBody();",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	]
+}
