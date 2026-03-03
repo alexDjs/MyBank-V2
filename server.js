@@ -546,6 +546,56 @@ app.get('/', (req, res) => {
   });
 });
 
+// ===== Database Health Check =====
+app.get('/health/db', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    // Test basic connection
+    await client.query('SELECT NOW()');
+    
+    // Check if users table exists
+    const tablesResult = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = 'users'
+    `);
+    
+    // Check if demo user exists
+    let demoUserExists = false;
+    if (tablesResult.rows.length > 0) {
+      const demoResult = await client.query(
+        'SELECT id FROM users WHERE email = $1',
+        ['demo@mybank.com']
+      );
+      demoUserExists = demoResult.rows.length > 0;
+    }
+    
+    client.release();
+    
+    res.json({
+      status: 'ok',
+      database: {
+        connected: true,
+        usersTableExists: tablesResult.rows.length > 0,
+        demoUserExists: demoUserExists,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('DB Health check error:', error);
+    res.status(500).json({
+      status: 'error',
+      database: {
+        connected: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
+});
+
 // ===== Error Handler =====
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
