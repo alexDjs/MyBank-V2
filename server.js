@@ -35,7 +35,137 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// ===== Database Connection Test (Non-blocking) =====
+// ===== Database Initialization =====
+async function initializeDatabase() {
+  const client = await pool.connect();
+
+  try {
+    console.log('🔄 Initializing database...');
+
+    // Create extensions if needed
+    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+
+    // Create users table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) NOT NULL,
+        country VARCHAR(100) DEFAULT 'Unknown',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        last_login TIMESTAMP WITH TIME ZONE,
+        is_active BOOLEAN DEFAULT true
+      )
+    `);
+
+    // Create accounts table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS accounts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        account_number VARCHAR(50) UNIQUE NOT NULL,
+        balance DECIMAL(15,2) DEFAULT 0.00,
+        currency VARCHAR(3) DEFAULT 'USD',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+
+    // Create transactions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS transactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL,
+        amount DECIMAL(15,2) NOT NULL CHECK (amount > 0),
+        direction VARCHAR(3) NOT NULL CHECK (direction IN ('in', 'out')),
+        location VARCHAR(255) DEFAULT '',
+        description TEXT DEFAULT '',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+
+    // Create indexes for better performance
+    await client.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions(account_id)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at DESC)');
+
+    console.log('✅ Database tables initialized successfully!');
+
+    // Seed demo data if it doesn't exist
+    await seedDemoData(client);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Database initialization error:', error.message);
+    if (process.env.NODE_ENV === 'production') {
+      console.log('⚠️  Continuing in production mode despite DB init error...');
+      return false;
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedDemoData(client) {
+  try {
+    // Check if demo user already exists
+    const existingUser = await client.query(
+      'SELECT id FROM users WHERE email = $1',
+      ['demo@mybank.com']
+    );
+
+    if (existingUser.rows.length === 0) {
+      console.log('🌱 Creating demo user and data...');
+      
+      // Create demo user
+      const hashedPassword = await bcrypt.hash('demo123', 12);
+      const userResult = await client.query(`
+        INSERT INTO users (email, password, first_name, last_name, country) 
+        VALUES ($1, $2, $3, $4, $5) 
+        RETURNING id
+      `, ['demo@mybank.com', hashedPassword, 'Demo', 'User', 'Poland']);
+
+      const userId = userResult.rows[0].id;
+
+      // Create demo account
+      const accountResult = await client.query(`
+        INSERT INTO accounts (user_id, account_number, balance) 
+        VALUES ($1, $2, $3) 
+        RETURNING id
+      `, [userId, `ACC-DEMO-${Date.now()}`, 2649.95]);
+
+      const accountId = accountResult.rows[0].id;
+
+      // Create sample transactions
+      const transactions = [
+        { type: 'Salary', amount: 5000.00, direction: 'in', location: 'Company Inc.', description: 'Monthly salary payment' },
+        { type: 'Grocery', amount: 150.75, direction: 'out', location: 'Supermarket XYZ', description: 'Weekly grocery shopping' },
+        { type: 'Transfer', amount: 2000.00, direction: 'in', location: 'Bank Transfer', description: 'Transfer from savings account' },
+        { type: 'Rent', amount: 1200.00, direction: 'out', location: 'Property Management', description: 'Monthly rent payment' },
+        { type: 'Utilities', amount: 85.30, direction: 'out', location: 'Electric Company', description: 'Monthly electricity bill' }
+      ];
+
+      for (const transaction of transactions) {
+        await client.query(`
+          INSERT INTO transactions (account_id, type, amount, direction, location, description)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [accountId, transaction.type, transaction.amount, transaction.direction, transaction.location, transaction.description]);
+      }
+
+      console.log('✅ Demo data created: demo@mybank.com / demo123');
+    }
+  } catch (error) {
+    console.error('⚠️  Demo data seeding failed:', error.message);
+    // Don't fail the startup if demo data fails
+  }
+}
+
+// ===== Database Connection Test =====
 async function testDatabaseConnection() {
   try {
     const client = await pool.connect();
@@ -428,8 +558,14 @@ const server = app.listen(PORT, async () => {
   console.log(`📅 Started at: ${new Date().toISOString()}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   
-  // Test database connection after server starts
-  await testDatabaseConnection();
+  // Initialize database after server starts
+  const dbConnected = await testDatabaseConnection();
+  if (dbConnected) {
+    await initializeDatabase();
+    console.log('🎉 MyBank V2 fully initialized and ready!');
+  } else {
+    console.log('⚠️  Server started but database initialization failed');
+  }
 });
 
 // ===== Graceful Shutdown =====

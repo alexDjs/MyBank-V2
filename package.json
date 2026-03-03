@@ -8,8 +8,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "echo 'Build completed successfully'",
-    "init-db": "node scripts/init-database.js",
-    "postinstall": "node scripts/init-database.js || echo 'Database initialization failed, server will start anyway'"
+    "init-db": "node scripts/init-database.js"
   },
   "keywords": ["banking", "nodejs", "postgresql", "docker"],
   "author": "Alex",
